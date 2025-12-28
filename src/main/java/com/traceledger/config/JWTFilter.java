@@ -82,8 +82,8 @@ public class JWTFilter extends OncePerRequestFilter{
 	            return;
 	        }
 	        log.info("before the log in");
-	        Integer userId = Integer.parseInt(jwtutils.extractUserID(jwt));
-	        User user = userService.getUserById(userId);
+	        String email = jwtutils.extractUserID(jwt);
+	        User user = userService.getUserByEmailId(email);
 	        if (user != null) {
 	            UsernamePasswordAuthenticationToken authToken =
 	                    new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());

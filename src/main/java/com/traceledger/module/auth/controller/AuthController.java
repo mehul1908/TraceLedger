@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.traceledger.config.JWTUtils;
 import com.traceledger.dto.ApiResponse;
 import com.traceledger.dto.LoginResponse;
 import com.traceledger.module.auth.dto.LoginUserModel;
@@ -24,17 +25,22 @@ import lombok.extern.slf4j.Slf4j;
 @RequestMapping("/auth")
 @Slf4j
 public class AuthController {
+	
 	@Autowired
 	private UserService userService;
 	
 	@Autowired
 	private PasswordEncoder passEncoder;
 	
+	@Autowired
+	private JWTUtils jwtUtils;
+	
 	@PostMapping("/register")
 	public ResponseEntity<ApiResponse> saveUser(@RequestBody @Valid RegisterUserModel model){
 		String hashedPass = passEncoder.encode(model.getPassword());
 		model.setHashedPassword(hashedPass);
 		userService.saveUser(model);
+		
 		return ResponseEntity.status(HttpStatus.CREATED).body(new ApiResponse(true, null, "User is created successfully"));
 	}
 	
@@ -42,7 +48,8 @@ public class AuthController {
 	public ResponseEntity<ApiResponse> loginUser(@RequestBody @Valid LoginUserModel model){
 		User user = userService.getUserById(model.getId());
 		if(passEncoder.matches(model.getPassword(), user.getPassword())) {
-			LoginResponse lr = new LoginResponse(user.getId() , user.getName(), user.getRole().toString());
+			String token = jwtUtils.generateToken(user.getEmail());
+			LoginResponse lr = new LoginResponse(user.getId() , user.getName(), user.getRole().toString() , token);
 			return ResponseEntity.ok(new ApiResponse(true , lr , "User is successfully logged in"));
 		}
 		throw new UserIdAndPasswordNotMatchException();

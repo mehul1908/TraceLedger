@@ -26,8 +26,7 @@ public class UserServiceImpl implements UserService{
 	@Override
 	// Return the user by their username(or id) override the fn of UserDetailService
 	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-		Integer userId = Integer.valueOf(username);
-	    return userRepo.findById(userId)
+	    return userRepo.findByEmail(username)
 	        .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 	}
 
@@ -43,7 +42,7 @@ public class UserServiceImpl implements UserService{
 
 	@Override
 	//Save the User
-	public void saveUser(@Valid RegisterUserModel model) {
+	public User saveUser(@Valid RegisterUserModel model) {
 		Optional<User> userOp = userRepo.findByEmail(model.getEmail());
 		if(userOp.isPresent()) {
 			log.error("User is already created : " + model.getEmail());
@@ -60,8 +59,16 @@ public class UserServiceImpl implements UserService{
 		
 		userRepo.save(savedUser);
 		log.info("user is saved");
-		return;
+		return savedUser;
 				
+	}
+
+
+	@Override
+	public User getUserByEmailId(String email) {
+		Optional<User> userOp = userRepo.findByEmail(email);
+		if(userOp.isPresent()) return userOp.get();
+		throw new UserNotFoundException(email);
 	}
 
 

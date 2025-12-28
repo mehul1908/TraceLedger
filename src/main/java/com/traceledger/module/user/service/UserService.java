@@ -12,6 +12,8 @@ public interface UserService extends UserDetailsService{
 
 	User getUserById(Integer userId);
 
-	void saveUser(@Valid RegisterUserModel model);
+	User saveUser(@Valid RegisterUserModel model);
+
+	User getUserByEmailId(String email);
 
 }

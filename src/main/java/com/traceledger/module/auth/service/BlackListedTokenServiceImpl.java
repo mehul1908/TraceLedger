@@ -10,6 +10,7 @@ import com.traceledger.module.auth.repo.BlackListedTokenRepo;
 
 
 
+
 @Service
 public class BlackListedTokenServiceImpl implements BlackListedTokenService{
 

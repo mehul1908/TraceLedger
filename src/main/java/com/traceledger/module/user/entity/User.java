@@ -18,7 +18,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
@@ -41,14 +40,8 @@ public class User implements UserDetails {
 	private static final long serialVersionUID = -1699884767533561612L;
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	@SequenceGenerator(
-		    name = "user_seq",
-		    sequenceName = "user_sequence",
-		    initialValue = 10001,
-		    allocationSize = 1
-		)
-		private Integer id;
+	@GeneratedValue(strategy = GenerationType.IDENTITY)	
+	private Integer id;
 	
 	@Column(nullable=false)
 	private String name;
@@ -61,9 +54,9 @@ public class User implements UserDetails {
 	@Email
 	private String email;
 	
-	@Builder.Default
+	@Column(nullable = false)
 	@Enumerated(EnumType.STRING)
-	private UserRole role = UserRole.ROLE_RETAILER;
+	private UserRole role;
 	
 	@Builder.Default
 	@Enumerated(EnumType.STRING)
@@ -85,28 +78,24 @@ public class User implements UserDetails {
 	@Override
 	@JsonIgnore
 	public String getUsername() {
-		return String.valueOf(this.id);
+		return this.email;
 	}
-
 	@Override
 	@JsonIgnore
 	public boolean isAccountNonExpired() {
-		// TODO Auto-generated method stub
-		return UserDetails.super.isAccountNonExpired();
+	    return true;
 	}
 
 	@Override
 	@JsonIgnore
 	public boolean isAccountNonLocked() {
-		// TODO Auto-generated method stub
-		return UserDetails.super.isAccountNonLocked();
+	    return true;
 	}
 
 	@Override
 	@JsonIgnore
 	public boolean isCredentialsNonExpired() {
-		// TODO Auto-generated method stub
-		return UserDetails.super.isCredentialsNonExpired();
+	    return true;
 	}
 
 	@Override
