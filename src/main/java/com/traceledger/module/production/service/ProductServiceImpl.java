@@ -8,8 +8,11 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.traceledger.exception.UnauthorizedUserException;
+import com.traceledger.module.audit.enums.AuditAction;
+import com.traceledger.module.audit.service.AuditLogService;
 import com.traceledger.module.production.dto.ProductRegisterModel;
 import com.traceledger.module.production.entity.Product;
 import com.traceledger.module.production.enums.ProductStatus;
@@ -20,12 +23,12 @@ import com.traceledger.module.user.entity.User;
 import com.traceledger.module.user.enums.UserRole;
 import com.traceledger.util.HashUtil;
 
-import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
+@Transactional
 public class ProductServiceImpl implements ProductService {
 	
 	@Autowired
@@ -33,6 +36,9 @@ public class ProductServiceImpl implements ProductService {
 	
 	@Autowired
 	private ProductSequenceRepo prodSeqRepo;
+	
+	@Autowired
+	private AuditLogService auditService;
 
 	@Override
 	@Transactional
@@ -74,7 +80,8 @@ public class ProductServiceImpl implements ProductService {
 	    } catch (DataIntegrityViolationException ex) {
 	        throw new RuntimeException("Product already exists");
 	    }
-
+	    
+	    auditService.create(AuditAction.CREATED, user, "Product Created : " + prodCode);;
 	    log.info("Product {} created successfully", prodCode);
 		
 	}

@@ -42,4 +42,7 @@ public class RegisterUserModel {
 	private String phoneNo;
 	
 	private String hashedPassword;
+	
+	@NotBlank(message = "Wallet Address can not be null")
+	private String walletAddress;
 }

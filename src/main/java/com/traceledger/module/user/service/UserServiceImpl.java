@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.traceledger.module.auth.dto.RegisterUserModel;
 import com.traceledger.module.user.entity.User;
@@ -18,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
+@Transactional
 public class UserServiceImpl implements UserService{
 
 	@Autowired
@@ -33,7 +35,7 @@ public class UserServiceImpl implements UserService{
 
 	@Override
 	//Return the User by the 'id'
-	public User getUserById(Integer userId) {
+	public User getUserById(Long userId) {
 		Optional<User> userOp = userRepo.findById(userId);
 		if(userOp.isPresent()) return userOp.get();
 		throw new UserNotFoundException(userId);
@@ -55,6 +57,7 @@ public class UserServiceImpl implements UserService{
 				password(model.getHashedPassword()).
 				role(model.getRole()).
 				phoneNo(model.getPhoneNo()).
+				walletAddress(model.getWalletAddress()).
 				build();
 		
 		userRepo.save(savedUser);

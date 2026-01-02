@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository;
 import com.traceledger.module.user.entity.User;
 
 @Repository
-public interface UserRepo  extends JpaRepository<User, Integer> {
+public interface UserRepo extends JpaRepository<User, Long> {
 
 	Optional<User> findByEmail(String email);
 

@@ -10,7 +10,7 @@ public class FactoryNotFoundException extends RuntimeException {
 		super("Factory not found");
 	}
 
-	public FactoryNotFoundException(Integer id) {
+	public FactoryNotFoundException(Long id) {
 		super("Factory with id " + id+ " is not found");
 	}
 

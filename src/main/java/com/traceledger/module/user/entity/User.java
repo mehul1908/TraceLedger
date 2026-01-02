@@ -25,84 +25,73 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
+@Entity
+@Table(name = "users")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Entity
-@Table(name = "users")
 @Builder
 public class User implements UserDetails {
 
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = -1699884767533561612L;
+    private static final long serialVersionUID = 1L;
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)	
-	private Integer id;
-	
-	@Column(nullable=false)
-	private String name;
-	
-	@JsonIgnore
-	@Column(nullable=false)
-	private String password;
-	
-	@Column(nullable=false , unique = true)
-	@Email
-	private String email;
-	
-	@Column(nullable = false)
-	@Enumerated(EnumType.STRING)
-	private UserRole role;
-	
-	@Builder.Default
-	@Enumerated(EnumType.STRING)
-	private UserStatus status = UserStatus.ACTIVE;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-	@Column(nullable=false)
-	@Pattern(
-		    regexp = "^\\+[1-9]\\d{7,14}$",
-		    message = "Phone number must be in international format, e.g. +919876543210"
-		)
-	private String phoneNo;
-	
-	@Override
-	@JsonIgnore
-	public Collection<? extends GrantedAuthority> getAuthorities() {
-		return Collections.singletonList(new SimpleGrantedAuthority(this.role.name()));
-	}
+    @Column(nullable = false)
+    private String name;
 
-	@Override
-	@JsonIgnore
-	public String getUsername() {
-		return this.email;
-	}
-	@Override
-	@JsonIgnore
-	public boolean isAccountNonExpired() {
-	    return true;
-	}
+    @JsonIgnore
+    @Column(nullable = false)
+    private String password;
 
-	@Override
-	@JsonIgnore
-	public boolean isAccountNonLocked() {
-	    return true;
-	}
+    @Email
+    @Column(nullable = false, unique = true, updatable = false)
+    private String email;
 
-	@Override
-	@JsonIgnore
-	public boolean isCredentialsNonExpired() {
-	    return true;
-	}
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private UserRole role;
 
-	@Override
-	@JsonIgnore
-	public boolean isEnabled() {
-		// TODO Auto-generated method stub
-		return this.status == UserStatus.ACTIVE;
-	}
-	
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private UserStatus status = UserStatus.ACTIVE;
+
+    @Pattern(
+        regexp = "^\\+[1-9]\\d{7,14}$",
+        message = "Phone number must be in international format"
+    )
+    @Column(nullable = false)
+    private String phoneNo;
+
+    @Pattern(
+        regexp = "^0x[a-fA-F0-9]{40}$",
+        message = "Invalid Ethereum wallet address"
+    )
+    @Column(nullable = false, unique = true, length = 42)
+    private String walletAddress;
+
+    @Override
+    @JsonIgnore
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return Collections.singletonList(
+            new SimpleGrantedAuthority(role.name())
+        );
+    }
+
+    @Override
+    @JsonIgnore
+    public String getUsername() {
+        return email;
+    }
+
+    @Override public boolean isAccountNonExpired() { return true; }
+    @Override public boolean isAccountNonLocked() { return true; }
+    @Override public boolean isCredentialsNonExpired() { return true; }
+
+    @Override
+    public boolean isEnabled() {
+        return status == UserStatus.ACTIVE;
+    }
 }

@@ -21,7 +21,6 @@ public class FactoryController {
 
 	@Autowired
 	private FactoryService factoryService;
-/*-----------------------Factory--------------------------*/
 	
 	@PostMapping("/")
 	@PreAuthorize("hasRole('MANUFACTURER')")

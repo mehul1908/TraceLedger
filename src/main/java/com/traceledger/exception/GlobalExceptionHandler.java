@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import com.traceledger.dto.ApiResponse;
 import com.traceledger.dto.ErrorResponse;
 import com.traceledger.module.auth.exception.UserIdAndPasswordNotMatchException;
+import com.traceledger.module.production.exception.FactoryNotFoundException;
+import com.traceledger.module.production.exception.ProductNotFoundException;
 import com.traceledger.module.user.exception.UserAlreadyCreatedException;
 import com.traceledger.module.user.exception.UserNotFoundException;
 
@@ -21,7 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class GlobalExceptionHandler {
 	// ------------------- 404 NOT FOUND -------------------
-    @ExceptionHandler({ UsernameNotFoundException.class, UserNotFoundException.class })
+    @ExceptionHandler({ UsernameNotFoundException.class, UserNotFoundException.class  , ProductNotFoundException.class , FactoryNotFoundException.class})
     public ResponseEntity<ApiResponse> handleNotFound(RuntimeException ex, HttpServletRequest request) {
         log.warn("Resource not found: {}", ex.getMessage());
         return buildErrorResponse(ex.getMessage(), HttpStatus.NOT_FOUND, request.getRequestURI());
@@ -30,14 +32,14 @@ public class GlobalExceptionHandler {
     
     
     // ------------------- 409 CONFLICT -------------------
-    @ExceptionHandler(UserAlreadyCreatedException.class)
+    @ExceptionHandler({UserAlreadyCreatedException.class , IllegalStateException.class})
     public ResponseEntity<ApiResponse> handleConflict(RuntimeException ex, HttpServletRequest request) {
         log.warn("Conflict: {}", ex.getMessage());
         return buildErrorResponse(ex.getMessage(), HttpStatus.CONFLICT, request.getRequestURI());
     }
 
     // ------------------- 401 UNAUTHORIZED -------------------
-    @ExceptionHandler({ /*UnauthorizedUserException.class,*/ UserIdAndPasswordNotMatchException.class })
+    @ExceptionHandler({ UnauthorizedUserException.class, UserIdAndPasswordNotMatchException.class })
     public ResponseEntity<ApiResponse> handleUnauthorized(RuntimeException ex, HttpServletRequest request) {
         log.warn("Unauthorized access attempt: {}", ex.getMessage());
         return buildErrorResponse(ex.getMessage(), HttpStatus.UNAUTHORIZED, request.getRequestURI());

@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 public class LoginUserModel {
 
 	@NotNull(message="Id can not be null")
-	private Integer id;
+	private Long id;
 	
 	@NotBlank(message="Password can not be blank")
 	private String password;

@@ -10,7 +10,7 @@ import jakarta.validation.Valid;
 
 public interface UserService extends UserDetailsService{
 
-	User getUserById(Integer userId);
+	User getUserById(Long userId);
 
 	User saveUser(@Valid RegisterUserModel model);
 

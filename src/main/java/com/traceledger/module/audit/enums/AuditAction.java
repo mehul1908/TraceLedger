@@ -1,0 +1,14 @@
+package com.traceledger.module.audit.enums;
+
+
+public enum AuditAction {
+    CREATED,
+    UPDATED,
+    DELETED,
+    SHIPMENT_CREATED,
+    SHIPMENT_DISPATCHED,
+    SHIPMENT_RECEIVED,
+    OWNERSHIP_TRANSFERRED,
+    STATUS_CHANGED, SHIPMENT_DISPATCH_INITIATED
+}
+

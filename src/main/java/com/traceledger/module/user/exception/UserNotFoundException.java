@@ -10,8 +10,8 @@ public class UserNotFoundException extends RuntimeException {
 		super("Incident not found");
 	}
 
-	public UserNotFoundException(Integer id) {
-		super("User with id " + id+ " is not found");
+	public UserNotFoundException(Long userId) {
+		super("User with id " + userId+ " is not found");
 	}
 
 	public UserNotFoundException(String email) {

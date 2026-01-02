@@ -6,8 +6,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.traceledger.exception.UnauthorizedUserException;
+import com.traceledger.module.audit.enums.AuditAction;
+import com.traceledger.module.audit.service.AuditLogService;
 import com.traceledger.module.production.dto.FactoryRegisterModel;
 import com.traceledger.module.production.entity.Factory;
 import com.traceledger.module.production.enums.FactoryStatus;
@@ -17,12 +20,12 @@ import com.traceledger.module.production.repo.FactorySequenceRepo;
 import com.traceledger.module.user.entity.User;
 import com.traceledger.module.user.enums.UserRole;
 
-import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
+@Transactional
 public class FactoryServiceImpl implements FactoryService {
 
 	@Autowired
@@ -30,6 +33,9 @@ public class FactoryServiceImpl implements FactoryService {
 
 	@Autowired
 	private FactorySequenceRepo factSeqRepo;
+	
+	@Autowired
+	private AuditLogService auditService;
 
 	@Override
 	@Transactional
@@ -59,7 +65,7 @@ public class FactoryServiceImpl implements FactoryService {
 	        .build();
 
 	    factoryRepo.save(factory);
-
+	    auditService.create(AuditAction.CREATED, user, "Factory created:"+factoryCode);
 	    log.info("Factory {} created successfully", factoryCode);
 	}
 

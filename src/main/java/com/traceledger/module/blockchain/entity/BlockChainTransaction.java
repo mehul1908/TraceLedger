@@ -1,42 +1,46 @@
 package com.traceledger.module.blockchain.entity;
 
-import jakarta.persistence.Column;
+import java.time.LocalDateTime;
+
+import com.traceledger.module.shipment.entity.Shipment;
+import com.traceledger.module.user.entity.User;
+
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
 @Entity
 @Table(name = "blockchain_transactions")
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class BlockChainTransaction {
+public class BlockchainTransaction {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
     private String txHash;
 
-    @Column(nullable = false)
-    private String entityType; // BATCH / SHIPMENT
+    private String batchHash;
 
-    @Column(nullable = false)
-    private String entityHash;
+    private Integer quantity;
 
-    @Enumerated(EnumType.STRING)
-    private TxStatus status;
+    @ManyToOne
+    private Shipment shipment;
 
-    private String errorMessage;
+    @ManyToOne
+    private User fromUser;
+
+    @ManyToOne
+    private User toUser;
+
+    private LocalDateTime createdAt;
 }
-

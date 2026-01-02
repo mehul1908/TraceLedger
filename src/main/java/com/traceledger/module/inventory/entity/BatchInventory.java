@@ -35,5 +35,9 @@ public class BatchInventory {
 
     @Column(nullable = false)
     private Integer availableQuantity;
+    
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer reservedQuantity = 0;
 }
 

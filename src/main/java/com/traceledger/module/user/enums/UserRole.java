@@ -1,21 +1,30 @@
 package com.traceledger.module.user.enums;
 
+import java.util.Set;
+
 public enum UserRole {
-	
-	ROLE_MANUFACTURER("manufacturer"),
-    ROLE_TRANSPORTER("transporter"),
-    ROLE_WAREHOUSE("warehouse"),
-    ROLE_WHOLESALER("wholesaler"),
-    ROLE_RETAILER("retailer"),
-    ROLE_ADMIN("admin");
 
-    private final String value;
+	ROLE_RETAILER(Set.of() , "Retailer"),
+    ROLE_WHOLESALER(Set.of(ROLE_RETAILER) , "Wholesaler"),
+    ROLE_WAREHOUSE(Set.of(ROLE_WHOLESALER) , "Warehouse"),
+    ROLE_TRANSPORTER(Set.of() , "Transporter"),
+    ROLE_MANUFACTURER(Set.of(ROLE_WAREHOUSE) , "Manufacturer"),
+    ROLE_ADMIN(Set.of() , "Admin");
 
-    UserRole(String value) {
-        this.value = value;
+    private final Set<UserRole> allowedNext;
+
+    private String name;
+    
+    UserRole(Set<UserRole> allowedNext , String name) {
+        this.allowedNext = allowedNext;
+        this.name = name;
+    }
+
+    public boolean canTransferTo(UserRole target) {
+        return allowedNext.contains(target);
     }
     
     public String displayName() {
-        return value;
+    	return this.name;
     }
 }

@@ -4,13 +4,12 @@ import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.traceledger.module.auth.entity.BlackListedToken;
 import com.traceledger.module.auth.repo.BlackListedTokenRepo;
 
-
-
-
+@Transactional
 @Service
 public class BlackListedTokenServiceImpl implements BlackListedTokenService{
 
@@ -24,6 +23,7 @@ public class BlackListedTokenServiceImpl implements BlackListedTokenService{
 	}
 
 	@Override
+	
 	public void logout(String token) {
 		
 		BlackListedToken blacklisted = new BlackListedToken(token);
