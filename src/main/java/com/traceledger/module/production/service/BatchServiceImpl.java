@@ -4,29 +4,21 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.traceledger.exception.UnauthorizedUserException;
-import com.traceledger.module.audit.enums.AuditAction;
-import com.traceledger.module.audit.service.AuditLogService;
 import com.traceledger.module.auth.service.AuthenticatedUserProvider;
-import com.traceledger.module.inventory.service.BatchInventoryService;
 import com.traceledger.module.production.dto.BatchRegisterModel;
 import com.traceledger.module.production.entity.Batch;
 import com.traceledger.module.production.entity.Factory;
 import com.traceledger.module.production.entity.Product;
 import com.traceledger.module.production.exception.BatchNotFoundException;
 import com.traceledger.module.production.record.BatchCreatedEvent;
-import com.traceledger.module.production.repo.BatchNoSequenceRepo;
 import com.traceledger.module.production.repo.BatchRepo;
 import com.traceledger.module.user.entity.User;
 import com.traceledger.module.user.enums.UserRole;
-import com.traceledger.util.HashUtil;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -43,12 +35,12 @@ public class BatchServiceImpl implements BatchService {
     private final FactoryService factoryService;
     private final SequenceGeneratorService sequenceService;
     private final HashService hashService;
-    private final AuthenticatedUserProvider authUserProvider;
     private final ApplicationEventPublisher eventPublisher;
+    private final AuthenticatedUserProvider authenticatedUser;
 
     @Override
     public void createBatch(@Valid BatchRegisterModel model) {
-        User user = authUserProvider.getAuthenticatedUser();
+    	User user = authenticatedUser.getAuthenticatedUser();
 
         if (user.getRole() != UserRole.ROLE_MANUFACTURER) {
             throw new UnauthorizedUserException("Only manufacturers can create batches");

@@ -2,19 +2,20 @@ package com.traceledger.module.auth.service;
 
 import java.util.Optional;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.traceledger.module.auth.entity.BlackListedToken;
 import com.traceledger.module.auth.repo.BlackListedTokenRepo;
 
+import lombok.RequiredArgsConstructor;
+
 @Transactional
 @Service
+@RequiredArgsConstructor
 public class BlackListedTokenServiceImpl implements BlackListedTokenService{
 
-	@Autowired
-	private BlackListedTokenRepo tokenRepo;
+	private final BlackListedTokenRepo tokenRepo;
 	
 	@Override
 	public boolean isTokenBlackListed(String jwt) {
@@ -23,7 +24,6 @@ public class BlackListedTokenServiceImpl implements BlackListedTokenService{
 	}
 
 	@Override
-	
 	public void logout(String token) {
 		
 		BlackListedToken blacklisted = new BlackListedToken(token);

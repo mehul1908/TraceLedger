@@ -31,6 +31,7 @@ import io.reactivex.Flowable;
 public class SupplyChainContract extends Contract {
 	
 	
+	@SuppressWarnings("unused")
 	private static final String BINARY = ""; // you can keep empty if not deploying
     private static final String ABI = "[\r\n"
     		+ "	{\r\n"

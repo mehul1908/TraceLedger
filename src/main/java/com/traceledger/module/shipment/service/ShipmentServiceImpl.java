@@ -5,18 +5,16 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.traceledger.exception.UnauthorizedUserException;
 import com.traceledger.module.audit.enums.AuditAction;
 import com.traceledger.module.audit.service.AuditLogService;
-import com.traceledger.module.blockchain.entity.BlockchainTxIntent;
+import com.traceledger.module.auth.service.AuthenticatedUserProvider;
 import com.traceledger.module.blockchain.enums.IntentStatus;
 import com.traceledger.module.blockchain.repo.IntentRepo;
-import com.traceledger.module.blockchain.service.BlockchainService;
 import com.traceledger.module.inventory.entity.BatchInventory;
 import com.traceledger.module.inventory.service.BatchInventoryService;
 import com.traceledger.module.production.entity.Batch;
@@ -27,6 +25,7 @@ import com.traceledger.module.shipment.entity.Shipment;
 import com.traceledger.module.shipment.entity.ShipmentItem;
 import com.traceledger.module.shipment.enums.ShipmentStatus;
 import com.traceledger.module.shipment.exception.ShipmentNotFoundException;
+import com.traceledger.module.shipment.record.ShipmentDispatchedEvent;
 import com.traceledger.module.shipment.repo.ShipmentItemRepo;
 import com.traceledger.module.shipment.repo.ShipmentRepo;
 import com.traceledger.module.user.entity.User;
@@ -61,11 +60,13 @@ public class ShipmentServiceImpl implements ShipmentService {
 	private AuditLogService auditService;
 	
 	@Autowired
-	private BlockchainService blockchainService;
-	
-	@Autowired
 	private IntentRepo intentRepo;
 	
+	@Autowired
+	private ApplicationEventPublisher eventPublisher;
+	
+	@Autowired
+	private AuthenticatedUserProvider authenticatedUser;
 	
 	@Override
 	@Transactional
@@ -143,15 +144,13 @@ public class ShipmentServiceImpl implements ShipmentService {
 
 	    Shipment shipment = getShipmentById(shipmentId);
 
-		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+		
 
 	    if(shipment.getStatus() != ShipmentStatus.CREATED) {
 			throw new IllegalStateException("Shipment cannot be dispatched");
 		}
 		
-	    if (auth == null || !(auth.getPrincipal() instanceof User user)) {
-	        throw new UnauthorizedUserException("User is unauthenticated");
-	    }
+	    User user = authenticatedUser.getAuthenticatedUser();
 	    log.warn(user.getId().toString());
 	    
 	    if(!this.isShipmentRelatedToUser(shipment , user)) {
@@ -167,37 +166,8 @@ public class ShipmentServiceImpl implements ShipmentService {
 
 	    shipment.setStatus(ShipmentStatus.DISPATCH_PENDING);
 	    shipRepo.save(shipment);
-
-	    for (ShipmentItem item : shipment.getItems()) {
-
-	        Batch batch = item.getBatch();
-
-	     // 1️⃣ Create intent FIRST (without tx hash)
-	        BlockchainTxIntent intent = BlockchainTxIntent.builder()
-	                .txHash(null) // or "PENDING"
-	                .batchHash(batch.getBatchHash())
-	                .quantity(item.getQuantity())
-	                .shipment(shipment)
-	                .fromUser(shipment.getFromUser())
-	                .toUser(shipment.getToUser())
-	                .status(IntentStatus.PENDING)
-	                .createdAt(LocalDateTime.now())
-	                .build();
-
-	        intentRepo.save(intent);
-
-	        // 2️⃣ Send blockchain transaction
-	        String txHash = blockchainService.transferBatch(
-	                batch.getBatchHash(),
-	                shipment.getToUser().getWalletAddress(),
-	                item.getQuantity()
-	        ).toLowerCase();
-
-	        // 3️⃣ Update intent with real tx hash
-	        intent.setTxHash(txHash);
-	        intentRepo.save(intent);
-
-	    }
+	    
+	    eventPublisher.publishEvent(new ShipmentDispatchedEvent(shipment.getId()));
 
 	    auditService.create(
 	            AuditAction.SHIPMENT_DISPATCH_INITIATED,
@@ -212,12 +182,7 @@ public class ShipmentServiceImpl implements ShipmentService {
 
 	    Shipment shipment = getShipmentById(shipmentId);
 
-	    Authentication auth =
-	            SecurityContextHolder.getContext().getAuthentication();
-
-	    if (auth == null || !(auth.getPrincipal() instanceof User user)) {
-	        throw new UnauthorizedUserException("User is unauthenticated");
-	    }
+	    User user = authenticatedUser.getAuthenticatedUser();
 
 	    // Shipment must already be dispatched
 	    if (shipment.getStatus() != ShipmentStatus.DISPATCHED) {
@@ -260,12 +225,7 @@ public class ShipmentServiceImpl implements ShipmentService {
 
 	    Shipment shipment = getShipmentById(shipmentId);
 
-	    Authentication auth =
-	            SecurityContextHolder.getContext().getAuthentication();
-
-	    if (auth == null || !(auth.getPrincipal() instanceof User user)) {
-	        throw new UnauthorizedUserException("User is unauthenticated");
-	    }
+	    User user = authenticatedUser.getAuthenticatedUser();
 
 	    // Only creator or sender can cancel
 	    if (!shipment.getFromUser().getId().equals(user.getId())) {

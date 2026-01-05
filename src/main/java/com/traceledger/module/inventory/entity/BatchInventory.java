@@ -10,6 +10,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -39,5 +40,11 @@ public class BatchInventory {
     @Column(nullable = false)
     @Builder.Default
     private Integer reservedQuantity = 0;
+    
+    /**
+     * Optimistic locking version field. Automatically incremented on update.
+     */
+    @Version
+    private Long version;
 }
 

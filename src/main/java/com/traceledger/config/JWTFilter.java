@@ -2,17 +2,15 @@ package com.traceledger.config;
 
 import java.io.IOException;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import com.traceledger.module.auth.entity.SecurityUser;
 import com.traceledger.module.auth.service.BlackListedTokenService;
-import com.traceledger.module.user.service.UserService;
 
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -20,30 +18,25 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class JWTFilter extends OncePerRequestFilter {
 
-    @Autowired
-    private JWTUtils jwtutils;
-
-    @Autowired
-    private UserService userService;
-
-    @Autowired
-    private BlackListedTokenService tokenService;
-    
+    private final JWTUtils jwtUtils;
+    private final UserDetailsService userDetailsService;
+    private final BlackListedTokenService tokenService;
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        String url = request.getRequestURI();
-        return url.contains("/auth")
-                || url.contains("/user/register")
-                || url.contains("/swagger-ui")
-                || url.contains("/v3/api-docs")
-                || url.contains("/apidocs.html");
+        String uri = request.getRequestURI();
+        return uri.startsWith("/auth/")
+                || uri.equals("/user/register")
+                || uri.startsWith("/swagger-ui/")
+                || uri.startsWith("/v3/api-docs");
     }
 
     @Override
@@ -53,42 +46,46 @@ public class JWTFilter extends OncePerRequestFilter {
             FilterChain filterChain)
             throws ServletException, IOException {
 
-        String authHeader = request.getHeader("Authorization");
+        String header = request.getHeader("Authorization");
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            throw new BadCredentialsException("JWT token missing or malformed");
+        // No token → let Spring Security handle it
+        if (header == null || !header.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
         }
 
-        String jwt = authHeader.substring(7);
+        String token = header.substring(7);
 
         try {
-            if (tokenService.isTokenBlackListed(jwt)) {
-                throw new BadCredentialsException("Token is blacklisted (user logged out)");
+            // Validate signature + expiry (single parse)
+            String email = jwtUtils.extractUserID(token);
+            
+            log.warn("JWT identity extracted: {}", email);
+
+
+            if (tokenService.isTokenBlackListed(token)) {
+                throw new BadCredentialsException("Token is blacklisted");
             }
 
-            if (jwtutils.isTokenExpired(jwt)) {
-                throw new BadCredentialsException("JWT token has expired");
-            }
+            UserDetails user =
+                    userDetailsService.loadUserByUsername(email);
 
-            if (!jwtutils.validateToken(jwt)) {
-                throw new AccessDeniedException("JWT token validation failed");
-            }
-
-            String email = jwtutils.extractUserID(jwt);
-            SecurityUser user = new SecurityUser(userService.getUserByEmailId(email));
-
-            UsernamePasswordAuthenticationToken authToken =
+            UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(
                             user, null, user.getAuthorities());
 
-            SecurityContextHolder.getContext().setAuthentication(authToken);
+            SecurityContextHolder.getContext()
+                                 .setAuthentication(authentication);
+            log.warn("Authentication SET: {}", 
+            	    SecurityContextHolder.getContext().getAuthentication());
 
-            filterChain.doFilter(request, response);
 
-        } catch (ExpiredJwtException ex) {
-            throw new BadCredentialsException("JWT token has expired", ex);
-        } catch (JwtException | SecurityException ex) {
-            throw new AccessDeniedException("Invalid JWT token", ex);
+        } catch (ExpiredJwtException e) {
+            throw new BadCredentialsException("JWT expired", e);
+        } catch (JwtException e) {
+            throw new BadCredentialsException("Invalid JWT", e);
         }
+
+        filterChain.doFilter(request, response);
     }
 }

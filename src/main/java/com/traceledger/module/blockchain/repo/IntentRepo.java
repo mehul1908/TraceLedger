@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
 import com.traceledger.module.blockchain.entity.BlockchainTxIntent;
 import com.traceledger.module.blockchain.enums.IntentStatus;

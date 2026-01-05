@@ -33,10 +33,6 @@ import com.traceledger.module.production.service.BatchService;
 import com.traceledger.module.shipment.entity.ShipmentItem;
 import com.traceledger.module.shipment.repo.ShipmentItemRepo;
 
-
-
-
-
 @Service
 public class BlockchainServiceImpl implements BlockchainService {
 
