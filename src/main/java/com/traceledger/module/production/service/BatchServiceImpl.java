@@ -5,6 +5,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -13,12 +14,14 @@ import org.springframework.transaction.annotation.Transactional;
 import com.traceledger.exception.UnauthorizedUserException;
 import com.traceledger.module.audit.enums.AuditAction;
 import com.traceledger.module.audit.service.AuditLogService;
+import com.traceledger.module.auth.service.AuthenticatedUserProvider;
 import com.traceledger.module.inventory.service.BatchInventoryService;
 import com.traceledger.module.production.dto.BatchRegisterModel;
 import com.traceledger.module.production.entity.Batch;
 import com.traceledger.module.production.entity.Factory;
 import com.traceledger.module.production.entity.Product;
 import com.traceledger.module.production.exception.BatchNotFoundException;
+import com.traceledger.module.production.record.BatchCreatedEvent;
 import com.traceledger.module.production.repo.BatchNoSequenceRepo;
 import com.traceledger.module.production.repo.BatchRepo;
 import com.traceledger.module.user.entity.User;
@@ -26,111 +29,65 @@ import com.traceledger.module.user.enums.UserRole;
 import com.traceledger.util.HashUtil;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Transactional
+@RequiredArgsConstructor
+@Slf4j
 public class BatchServiceImpl implements BatchService {
 
-	@Autowired
-	private BatchNoSequenceRepo batchNoRepo;
-	
-	@Autowired
-	private BatchRepo batchRepo;
-	
-	@Autowired
-	private ProductService productService;
-	
-	@Autowired
-	private FactoryService factoryService;
-	
-	@Autowired
-	private BatchInventoryService batchInvService;
-	
-	@Autowired
-	private AuditLogService auditService;
-	
-	@Override
-	@Transactional
-	public void createBatch(@Valid BatchRegisterModel model) {
-		
-		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    private final BatchRepo batchRepo;
+    private final ProductService productService;
+    private final FactoryService factoryService;
+    private final SequenceGeneratorService sequenceService;
+    private final HashService hashService;
+    private final AuthenticatedUserProvider authUserProvider;
+    private final ApplicationEventPublisher eventPublisher;
 
-	    if (auth == null || !(auth.getPrincipal() instanceof User user)) {
-	        throw new UnauthorizedUserException("User is unauthenticated");
-	    }
-	    
-	    if (user.getRole() != UserRole.ROLE_MANUFACTURER) {
-	        throw new UnauthorizedUserException("Only manufacturers can create factories");
-	    }
+    @Override
+    public void createBatch(@Valid BatchRegisterModel model) {
+        User user = authUserProvider.getAuthenticatedUser();
 
-	    Product product = productService.findByProductCode(
-	            model.getProductCode()
-	    );
+        if (user.getRole() != UserRole.ROLE_MANUFACTURER) {
+            throw new UnauthorizedUserException("Only manufacturers can create batches");
+        }
 
-	    Factory factory = factoryService.findByFactoryCode(
-	            model.getFactoryCode()
-	    );
+        Product product = productService.findByProductCode(model.getProductCode());
+        Factory factory = factoryService.findByFactoryCode(model.getFactoryCode());
 
-	    LocalDate manufactureDate = LocalDate.now();
+        LocalDate manufactureDate = LocalDate.now();
+        int nextSeq = sequenceService.nextBatchSeq(product.getId(), factory.getId(), manufactureDate);
 
-	    int nextSeq = batchNoRepo.findMaxSeq(
-	            manufactureDate,
-	            product.getId(),
-	            factory.getId()
-	    ) + 1;
+        String datePart = manufactureDate.format(DateTimeFormatter.ofPattern("yyMMdd"));
+        String batchNo = String.format("B-%s%s%s%02d", datePart, product.getProductCode(), factory.getFactoryCode(), nextSeq);
+        String batchHash = hashService.generateBatchHash(batchNo, product.getProductHash(), factory.getFactoryCode(), manufactureDate);
 
-	    batchNoRepo.insertSeq(
-	            manufactureDate,
-	            product.getId(),
-	            factory.getId(),
-	            nextSeq
-	    );
+        Batch batch = Batch.builder()
+                .batchNo(batchNo)
+                .product(product)
+                .factory(factory)
+                .manufactureDate(manufactureDate)
+                .batchHash(batchHash)
+                .quantity(model.getQuantity())
+                .build();
 
-	    String datePart = manufactureDate.format(
-	            DateTimeFormatter.ofPattern("yyMMdd")
-	    );
+        batchRepo.save(batch);
 
-	    String batchNo = String.format(
-	            "B-%s%s%s%02d",
-	            datePart,
-	            product.getProductCode(),
-	            factory.getFactoryCode(),
-	            nextSeq
-	    );
+        // Publish event to decouple audit & inventory
+        eventPublisher.publishEvent(new BatchCreatedEvent(batch, user));
+        log.info("Batch {} created successfully", batchNo);
+    }
 
-	    String canonical = String.join("|",
-	            batchNo,
-	            product.getProductHash(),
-	            factory.getFactoryCode(),
-	            manufactureDate.toString()
-	    );
+    @Override
+    public Batch getBatchById(Long batchId) {
+        return batchRepo.findById(batchId)
+                .orElseThrow(() -> new BatchNotFoundException(batchId));
+    }
 
-	    String batchHash = HashUtil.sha256(canonical);
-
-	    Batch batch = Batch.builder()
-	            .batchNo(batchNo)
-	            .product(product)
-	            .factory(factory)
-	            .manufactureDate(manufactureDate)
-	            .batchHash(batchHash)
-	            .quantity(model.getQuantity())
-	            .build();
-
-	    batchRepo.save(batch);
-	    
-	    auditService.create(AuditAction.CREATED, user , "Batch Created" + batchNo);
-	    
-	    batchInvService.create(batch , batch.getQuantity() , user , "Batch Created (Ownership Created) : " + batchNo);
-	    
-	    
-	}
-
-	@Override
-	public Batch getBatchById(Long batchId) {
-		Optional<Batch> batchOp = batchRepo.findById(batchId);
-		if(batchOp.isPresent()) return batchOp.get();
-		throw new BatchNotFoundException(batchId);
-	}
-
-
+    @Override
+    public Optional<Batch> getBatchOptionalByBatchHash(String batchHash) {
+        return batchRepo.findByBatchHash(batchHash);
+    }
 }

@@ -36,6 +36,9 @@ public class FactoryServiceImpl implements FactoryService {
 	
 	@Autowired
 	private AuditLogService auditService;
+	
+	@Autowired
+	private SequenceGeneratorService sequenceGenerator;
 
 	@Override
 	@Transactional
@@ -47,14 +50,13 @@ public class FactoryServiceImpl implements FactoryService {
 	        throw new UnauthorizedUserException("User is unauthenticated");
 	    }
 
-	    if (user.getRole() != UserRole.ROLE_MANUFACTURER) {
+	    if (user.getRole() != UserRole.ROLE_MANUFACTURER && user.getRole() != UserRole.ROLE_ADMIN) {
 	        throw new UnauthorizedUserException("Only manufacturers can create factories");
 	    }
 
-	    factSeqRepo.insertDummyRow();
-	    Long seq = factSeqRepo.getLastInsertedId();
-
+	    long seq = sequenceGenerator.nextFactorySeq();
 	    String factoryCode = String.format("F%03d", seq);
+
 
 	    Factory factory = Factory.builder()
 	        .factoryCode(factoryCode)

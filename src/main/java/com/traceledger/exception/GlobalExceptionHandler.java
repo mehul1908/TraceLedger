@@ -1,10 +1,16 @@
 package com.traceledger.exception;
 
+import java.nio.file.AccessDeniedException;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -44,7 +50,7 @@ public class GlobalExceptionHandler {
         log.warn("Unauthorized access attempt: {}", ex.getMessage());
         return buildErrorResponse(ex.getMessage(), HttpStatus.UNAUTHORIZED, request.getRequestURI());
     }
-/*
+
     // ------------------- 400 BAD REQUEST (Validation) -------------------
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse> handleValidationErrors(MethodArgumentNotValidException ex,
@@ -63,10 +69,38 @@ public class GlobalExceptionHandler {
         err.setValidationErrors(errors);
 
         log.warn("Validation error at {}: {}", request.getRequestURI(), errors);
-        return new ResponseEntity<>(new ResponseEntity<>(new ApiResponse(false, err, null), status), HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(new ApiResponse(false, err, null), HttpStatus.BAD_REQUEST);
     }
     
-    */
+ // ------------------- 401 UNAUTHORIZED (JWT / AUTH) -------------------
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ApiResponse> handleBadCredentials(
+            BadCredentialsException ex,
+            HttpServletRequest request) {
+
+        log.warn("Authentication failed: {}", ex.getMessage());
+        return buildErrorResponse(
+                ex.getMessage(),
+                HttpStatus.UNAUTHORIZED,
+                request.getRequestURI()
+        );
+    }
+
+    // ------------------- 403 FORBIDDEN (JWT / AUTH) -------------------
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse> handleAccessDenied(
+            AccessDeniedException ex,
+            HttpServletRequest request) {
+
+        log.warn("Access denied: {}", ex.getMessage());
+        return buildErrorResponse(
+                ex.getMessage(),
+                HttpStatus.FORBIDDEN,
+                request.getRequestURI()
+        );
+    }
+
+    
 
     // ------------------- 500 INTERNAL SERVER ERROR -------------------
     @ExceptionHandler(Exception.class)

@@ -207,15 +207,6 @@ public class ShipmentServiceImpl implements ShipmentService {
 	}
 
 	@Override
-	public boolean isShipmentRelatedToUser(Shipment shipment, User user) {
-	    Long userId = user.getId();
-
-	    return shipment.getFromUser().getId().equals(userId)
-	        || shipment.getToUser().getId().equals(userId)
-	        || shipment.getTransporter().getId().equals(userId);
-	}
-
-	@Override
 	@Transactional
 	public void receiveShipment(Long shipmentId) {
 
@@ -263,6 +254,57 @@ public class ShipmentServiceImpl implements ShipmentService {
 	    );
 	}
 
+	@Override
+	@Transactional
+	public void cancelShipment(Long shipmentId) {
+
+	    Shipment shipment = getShipmentById(shipmentId);
+
+	    Authentication auth =
+	            SecurityContextHolder.getContext().getAuthentication();
+
+	    if (auth == null || !(auth.getPrincipal() instanceof User user)) {
+	        throw new UnauthorizedUserException("User is unauthenticated");
+	    }
+
+	    // Only creator or sender can cancel
+	    if (!shipment.getFromUser().getId().equals(user.getId())) {
+	        throw new UnauthorizedUserException("You cannot cancel this shipment");
+	    }
+
+	    // Disallow cancellation after blockchain confirmation
+	    if (shipment.getStatus() == ShipmentStatus.DISPATCHED ||
+	        shipment.getStatus() == ShipmentStatus.RECEIVED) {
+	        throw new IllegalStateException("Shipment cannot be cancelled");
+	    }
+
+	    for(ShipmentItem item : shipment.getItems()) {
+	    	Batch batch = item.getBatch();
+			BatchInventory batchInv = batchInvService.findBatchInvByBatchAndOwner(batch , user);
+			int available = batchInv.getAvailableQuantity();
+			int reserved = batchInv.getReservedQuantity();
+			batchInv.setAvailableQuantity(available + item.getQuantity());
+			batchInv.setReservedQuantity(reserved - item.getQuantity());
+			batchInvService.save(batchInv);
+	    }
+	    
+	    shipment.setStatus(ShipmentStatus.CANCELLED);
+	    shipRepo.save(shipment);
+
+	    // Mark pending intents as FAILED
+	    intentRepo.findByShipmentAndStatus(
+	            shipment, IntentStatus.PENDING
+	    ).forEach(intent -> {
+	        intent.setStatus(IntentStatus.FAILED);
+	        intentRepo.save(intent);
+	    });
+
+	    auditService.create(
+	            AuditAction.SHIPMENT_CANCELLED,
+	            user,
+	            "Shipment cancelled: " + shipment.getId()
+	    );
+	}
 
 	@Override
 	public Shipment getShipmentById(Long shipmentId) {
@@ -271,7 +313,19 @@ public class ShipmentServiceImpl implements ShipmentService {
 		throw new ShipmentNotFoundException(shipmentId);
 	}
 	
-	
-	
+	@Override
+	public boolean isShipmentRelatedToUser(Shipment shipment, User user) {
+	    Long userId = user.getId();
+
+	    return shipment.getFromUser().getId().equals(userId)
+	        || shipment.getToUser().getId().equals(userId)
+	        || shipment.getTransporter().getId().equals(userId);
+	}
+
+	@Override
+	public Optional<ShipmentItem> getShipmentItemOptionalByShipmentAndBatch(Shipment shipment, Batch batch) {
+		return shipItemRepo.findByShipmentAndBatch(shipment , batch);
+	}
+
 	
 }

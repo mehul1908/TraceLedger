@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.web3j.protocol.core.methods.response.TransactionReceipt;
 
 import com.traceledger.module.blockchain.entity.BlockchainTxIntent;
 import com.traceledger.module.blockchain.enums.IntentStatus;
@@ -14,13 +15,17 @@ public interface IntentRepo extends JpaRepository<BlockchainTxIntent, Long>{
 
 	Optional<BlockchainTxIntent> findByTxHash(String txHash);
 
-	boolean existsByShipmentAndStatus(Shipment shipment, IntentStatus pending);
+	boolean existsByShipmentAndStatus(Shipment shipment, IntentStatus status);
 
 	List<BlockchainTxIntent> findByStatusAndCreatedAtBefore(
 		    IntentStatus status,
 		    LocalDateTime time
 		);
 
-	List<BlockchainTxIntent> findByStatus(IntentStatus pending);
+	List<BlockchainTxIntent> findByStatus(IntentStatus status);
+
+	Iterable<BlockchainTxIntent> findByShipmentAndStatus(Shipment shipment, IntentStatus status);
+
+	Optional<BlockchainTxIntent> findFirstByOrderByCreatedAtAsc();
 
 }

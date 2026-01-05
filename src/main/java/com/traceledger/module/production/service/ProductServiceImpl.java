@@ -13,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.traceledger.exception.UnauthorizedUserException;
 import com.traceledger.module.audit.enums.AuditAction;
 import com.traceledger.module.audit.service.AuditLogService;
+import com.traceledger.module.auth.service.AuthenticatedUserProvider;
+import com.traceledger.module.auth.service.AuthenticatedUserProvider;
 import com.traceledger.module.production.dto.ProductRegisterModel;
 import com.traceledger.module.production.entity.Product;
 import com.traceledger.module.production.enums.ProductStatus;
@@ -24,73 +26,50 @@ import com.traceledger.module.user.enums.UserRole;
 import com.traceledger.util.HashUtil;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
 @Transactional
+@RequiredArgsConstructor
 public class ProductServiceImpl implements ProductService {
-	
-	@Autowired
-	private ProductRepo productRepo;
-	
-	@Autowired
-	private ProductSequenceRepo prodSeqRepo;
-	
-	@Autowired
-	private AuditLogService auditService;
 
-	@Override
-	@Transactional
-	public void createProduct(@Valid ProductRegisterModel model) {
-		Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    private final ProductRepo productRepo;
+    private final SequenceGeneratorService sequenceService;
+    private final HashService hashService;
+    private final AuthenticatedUserProvider authUserProvider;
+    private final AuditLogService auditService;
 
-	    if (auth == null || !(auth.getPrincipal() instanceof User user)) {
-	        throw new UnauthorizedUserException("User is unauthenticated");
-	    }
+    @Override
+    public void createProduct(@Valid ProductRegisterModel model) {
+        User user = authUserProvider.getAuthenticatedUser();
 
-	    if (user.getRole() != UserRole.ROLE_MANUFACTURER) {
-	        throw new UnauthorizedUserException("Only manufacturers can create products");
-	    }
+        if (user.getRole() != UserRole.ROLE_MANUFACTURER) {
+            throw new UnauthorizedUserException("Only manufacturers can create products");
+        }
 
-	    prodSeqRepo.insertDummyRow();
-	    Long seq = prodSeqRepo.getLastInsertedId();
+        long seq = sequenceService.nextProductSeq();
+        String prodCode = String.format("P%03d", seq);
+        String prodHash = hashService.generateProductHash(prodCode, model.getName(), model.getMrp());
 
-	    String prodCode = String.format("P%03d", seq);
+        Product prod = Product.builder()
+                .description(model.getDescription())
+                .mrp(model.getMrp())
+                .name(model.getName())
+                .productCode(prodCode)
+                .productHash(prodHash)
+                .status(ProductStatus.ACTIVE)
+                .build();
 
-	    String canonical = String.join("|",
-	    	    prodCode,
-	    	    model.getName().trim(),
-	    	    model.getMrp().setScale(2, RoundingMode.HALF_UP).toString()
-	    	);
+        productRepo.save(prod);
+        auditService.create(AuditAction.CREATED, user, "Product Created : " + prodCode);
+        log.info("Product {} created successfully", prodCode);
+    }
 
-	    String prodHash = HashUtil.sha256(canonical);
-	    
-	    Product prod = Product.builder()
-	    		.description(model.getDescription())
-	    		.mrp(model.getMrp())
-	    		.name(model.getName())
-	    		.productCode(prodCode)
-	    		.productHash(prodHash)
-	    		.status(ProductStatus.ACTIVE)
-	    		.build();
-
-	    try {
-	        productRepo.save(prod);
-	    } catch (DataIntegrityViolationException ex) {
-	        throw new RuntimeException("Product already exists");
-	    }
-	    
-	    auditService.create(AuditAction.CREATED, user, "Product Created : " + prodCode);;
-	    log.info("Product {} created successfully", prodCode);
-		
-	}
-
-	@Override
-	public Product findByProductCode(String productCode) {
-		Optional<Product> prodOp = productRepo.findByProductCode(productCode);
-		if(prodOp.isPresent()) return prodOp.get();
-		throw new ProductNotFoundException(productCode);
-	}
-
+    @Override
+    public Product findByProductCode(String productCode) {
+        return productRepo.findByProductCode(productCode)
+                .orElseThrow(() -> new ProductNotFoundException(productCode));
+    }
 }

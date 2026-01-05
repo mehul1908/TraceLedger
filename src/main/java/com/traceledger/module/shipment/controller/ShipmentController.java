@@ -43,6 +43,10 @@ public class ShipmentController {
 	    return ResponseEntity.ok(new ApiResponse(true, null, "Shipment Received"));
 	}
 
-	
+	@PostMapping("/{shipmentId}/cancel")
+	public ResponseEntity<ApiResponse> cancelShipment(@PathVariable Long shipmentId) {
+	    shipService.cancelShipment(shipmentId);
+	    return ResponseEntity.ok(new ApiResponse(true, null, "Shipment Cancelled"));
+	}
 	
 }

@@ -1,6 +1,5 @@
 package com.traceledger.module.audit.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -9,13 +8,17 @@ import com.traceledger.module.audit.enums.AuditAction;
 import com.traceledger.module.audit.repo.AuditLogRepo;
 import com.traceledger.module.user.entity.User;
 
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 
 @Service
 @Transactional
+@Slf4j
+@RequiredArgsConstructor
 public class AuditLogServiceImpl implements AuditLogService{
 
-	@Autowired
-	private AuditLogRepo auditRepo;
+	private final AuditLogRepo auditRepo;
 	
 	@Override
 	public void create(AuditAction action, User performedBy, String metadata) {
@@ -26,6 +29,7 @@ public class AuditLogServiceImpl implements AuditLogService{
 				.build();
 		auditRepo.save(audit);
 		
+		log.info("Audit saved : " + audit.getId());
 	}
 
 }

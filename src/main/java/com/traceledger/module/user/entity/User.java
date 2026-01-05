@@ -1,12 +1,5 @@
 package com.traceledger.module.user.entity;
 
-import java.util.Collection;
-import java.util.Collections;
-
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.traceledger.module.user.enums.UserRole;
 import com.traceledger.module.user.enums.UserStatus;
@@ -31,9 +24,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User implements UserDetails {
-
-    private static final long serialVersionUID = 1L;
+public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -70,28 +61,8 @@ public class User implements UserDetails {
         message = "Invalid Ethereum wallet address"
     )
     @Column(nullable = false, unique = true, length = 42)
+    @JsonIgnore
     private String walletAddress;
 
-    @Override
-    @JsonIgnore
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singletonList(
-            new SimpleGrantedAuthority(role.name())
-        );
-    }
-
-    @Override
-    @JsonIgnore
-    public String getUsername() {
-        return email;
-    }
-
-    @Override public boolean isAccountNonExpired() { return true; }
-    @Override public boolean isAccountNonLocked() { return true; }
-    @Override public boolean isCredentialsNonExpired() { return true; }
-
-    @Override
-    public boolean isEnabled() {
-        return status == UserStatus.ACTIVE;
-    }
+    
 }

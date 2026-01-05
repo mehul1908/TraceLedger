@@ -13,6 +13,7 @@ import org.web3j.tx.gas.StaticGasProvider;
 
 import com.traceledger.module.blockchain.contract.SupplyChainContract;
 
+//Blockchain Configuration
 @Configuration
 public class BlockchainConfig {
 
